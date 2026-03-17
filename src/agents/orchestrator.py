@@ -25,7 +25,7 @@ from src.agents.player_injury import assess_players
 from src.agents.prediction import predict_matchup
 from src.agents.structured_data import get_team_data
 from src.agents.team_research import get_qualitative_research
-from src.models.enums import RoundName
+from src.models.enums import Region, RoundName
 from src.models.output import BracketOutput, RoundResult
 from src.models.prediction import Prediction
 from src.models.team import Bracket, Matchup, Team
@@ -266,7 +266,10 @@ class OrchestratorAgent:
     def advance_winners(self, round_name: str, predictions: list[Prediction]) -> list[Matchup]:
         """Build next round matchups from current round winners.
 
-        Pairs winners sequentially: winner[0] vs winner[1], winner[2] vs winner[3], etc.
+        For most rounds, pairs winners sequentially: winner[0] vs winner[1], etc.
+        For the Final Four, pairs by NCAA bracket convention:
+          - East region winner vs South region winner
+          - West region winner vs Midwest region winner
 
         Args:
             round_name: The round that just completed.
@@ -280,7 +283,6 @@ class OrchestratorAgent:
         # Determine next round name
         current_idx = ROUND_ORDER.index(round_name)
         if current_idx >= len(ROUND_ORDER) - 1:
-            # Championship is the last round — no next round
             return []
 
         next_round_name = ROUND_ORDER[current_idx + 1]
@@ -294,7 +296,11 @@ class OrchestratorAgent:
             else:
                 winners.append(pred.team_b)
 
-        # Pair winners sequentially: 0 vs 1, 2 vs 3, etc.
+        # For Final Four: pair by region (NCAA bracket convention)
+        if next_round_enum == RoundName.FINAL_FOUR and len(winners) == 4:
+            return self._build_final_four_matchups(winners, next_round_enum)
+
+        # Standard sequential pairing for all other rounds
         next_matchups: list[Matchup] = []
         game_number = 1
         for i in range(0, len(winners) - 1, 2):
@@ -312,6 +318,65 @@ class OrchestratorAgent:
             game_number += 1
 
         return next_matchups
+
+    def _build_final_four_matchups(
+        self, winners: list[Team], round_enum: RoundName
+    ) -> list[Matchup]:
+        """Build Final Four matchups using NCAA bracket region pairing.
+
+        NCAA convention: East vs South, West vs Midwest.
+        If regions can't be determined, falls back to sequential pairing.
+        """
+        # NCAA Final Four pairing: East vs South, West vs Midwest
+        _REGION_PAIRS = [
+            (Region.EAST, Region.SOUTH),
+            (Region.WEST, Region.MIDWEST),
+        ]
+
+        region_map: dict[Region, Team] = {}
+        for w in winners:
+            region_map[w.region] = w
+
+        matchups: list[Matchup] = []
+        game_number = 1
+
+        for region_a, region_b in _REGION_PAIRS:
+            team_a = region_map.get(region_a)
+            team_b = region_map.get(region_b)
+            if team_a and team_b:
+                matchups.append(
+                    Matchup(
+                        team_a=team_a,
+                        team_b=team_b,
+                        round_name=round_enum,
+                        venue="TBD",
+                        game_number=game_number,
+                    )
+                )
+                game_number += 1
+
+        # Fallback: if region pairing didn't produce 2 matchups, pair sequentially
+        if len(matchups) < 2:
+            logger.warning(
+                "Could not pair Final Four by region (found %d matchups); "
+                "falling back to sequential pairing.",
+                len(matchups),
+            )
+            matchups = []
+            game_number = 1
+            for i in range(0, len(winners) - 1, 2):
+                matchups.append(
+                    Matchup(
+                        team_a=winners[i],
+                        team_b=winners[i + 1],
+                        round_name=round_enum,
+                        venue="TBD",
+                        game_number=game_number,
+                    )
+                )
+                game_number += 1
+
+        return matchups
 
     def run(
         self,

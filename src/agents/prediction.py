@@ -172,6 +172,49 @@ def _score_location(team_a: str, matchup: dict) -> float:
     return float(score)
 
 
+def _predict_total_score(
+    team_a: str,
+    team_b: str,
+    team_stats: dict,
+    analytics: dict,
+) -> dict:
+    """Predict the total combined final score for a Championship game.
+
+    Uses scoring offense averages from both teams, adjusted for
+    tournament context (Championship games tend to be ~5% lower scoring
+    due to elite defense and slower pace).
+
+    Returns a dict with predicted_total, team_a_score, team_b_score.
+    """
+    a_data = team_stats.get(team_a, {})
+    b_data = {}
+    for k in team_stats:
+        if k != team_a:
+            b_data = team_stats[k]
+            break
+
+    ppg_a = float(a_data.get("scoring_offense", 0.0))
+    ppg_b = float(b_data.get("scoring_offense", 0.0))
+
+    # If no scoring data, use a reasonable NCAA tournament average
+    if ppg_a < 1.0:
+        ppg_a = 72.0
+    if ppg_b < 1.0:
+        ppg_b = 72.0
+
+    # Championship adjustment: ~5% lower scoring due to elite matchup
+    championship_factor = 0.95
+    score_a = round(ppg_a * championship_factor)
+    score_b = round(ppg_b * championship_factor)
+
+    return {
+        "predicted_total": score_a + score_b,
+        "team_a_predicted_score": score_a,
+        "team_b_predicted_score": score_b,
+        "methodology": "Based on season PPG averages with 5% championship-game adjustment",
+    }
+
+
 def _build_rationale(
     team_a: str,
     team_b: str,
@@ -368,4 +411,12 @@ def predict_matchup(
         weight_adjustments=weight_adjustments,
     )
 
-    return prediction.to_dict()
+    result = prediction.to_dict()
+
+    # For Championship games, predict the total combined final score
+    if round_enum == RoundName.CHAMPIONSHIP:
+        result["predicted_total_score"] = _predict_total_score(
+            team_a, team_b, team_stats, analytics
+        )
+
+    return result
