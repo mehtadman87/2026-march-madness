@@ -76,14 +76,11 @@ class BracketOutput:
     rounds: list[RoundResult]
     upset_alerts: list[dict[str, Any]]
     cinderella_watch: list[dict[str, Any]]
+    championship_score: dict[str, Any] | None = None
 
     def to_dict(self) -> dict[str, Any]:
-        """Serialize to JSON-compatible dict.
-        
-        Returns:
-            Dictionary representation of the complete bracket output.
-        """
-        return {
+        """Serialize to JSON-compatible dict."""
+        result = {
             "champion": self.champion,
             "champion_confidence": self.champion_confidence,
             "champion_path": self.champion_path,
@@ -91,6 +88,9 @@ class BracketOutput:
             "upset_alerts": self.upset_alerts,
             "cinderella_watch": self.cinderella_watch,
         }
+        if self.championship_score is not None:
+            result["championship_score"] = self.championship_score
+        return result
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "BracketOutput":
@@ -244,6 +244,13 @@ class BracketOutput:
         lines.append(f"  Champion: {self.champion}")
         lines.append(f"  Confidence: {self.champion_confidence}%")
         lines.append(f"  Path to victory: {' → '.join(self.champion_path)}")
+        if self.championship_score:
+            lines.append(f"")
+            lines.append(f"  📊 Predicted Championship Score:")
+            lines.append(f"     Total: {self.championship_score.get('predicted_total', 'N/A')}")
+            ta = self.championship_score.get('team_a_predicted_score', '?')
+            tb = self.championship_score.get('team_b_predicted_score', '?')
+            lines.append(f"     {ta} - {tb}")
         lines.append("")
 
         lines.extend(self._format_upset_alerts())

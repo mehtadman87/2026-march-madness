@@ -74,7 +74,9 @@ class OrchestratorAgent:
             },
         }
 
-    def process_round(self, round_name: str, matchups: list[Matchup]) -> list[Prediction]:
+    def process_round(
+        self, round_name: str, matchups: list[Matchup]
+    ) -> list[Prediction]:
         """Process all matchups in a single tournament round.
 
         For each matchup:
@@ -109,7 +111,11 @@ class OrchestratorAgent:
 
             logger.info(
                 "Processing matchup: (%d) %s vs (%d) %s in %s",
-                seed_a, team_a, seed_b, team_b, round_name,
+                seed_a,
+                team_a,
+                seed_b,
+                team_b,
+                round_name,
             )
 
             # Step 1: Structured data (Requirement 10.2, 10.6 - use cache)
@@ -117,12 +123,20 @@ class OrchestratorAgent:
             stats_b = self._get_cached_or_fetch(team_b, "stats", get_team_data)
 
             # Step 2: Qualitative research
-            qual_a = self._get_cached_or_fetch(team_a, "qualitative", get_qualitative_research)
-            qual_b = self._get_cached_or_fetch(team_b, "qualitative", get_qualitative_research)
+            qual_a = self._get_cached_or_fetch(
+                team_a, "qualitative", get_qualitative_research
+            )
+            qual_b = self._get_cached_or_fetch(
+                team_b, "qualitative", get_qualitative_research
+            )
 
             # Step 3: Advanced analytics
-            analytics_a = self._get_cached_or_fetch(team_a, "analytics", get_advanced_analytics)
-            analytics_b = self._get_cached_or_fetch(team_b, "analytics", get_advanced_analytics)
+            analytics_a = self._get_cached_or_fetch(
+                team_a, "analytics", get_advanced_analytics
+            )
+            analytics_b = self._get_cached_or_fetch(
+                team_b, "analytics", get_advanced_analytics
+            )
 
             # Step 4: Matchup analysis
             matchup_report = analyze_matchup(
@@ -138,8 +152,12 @@ class OrchestratorAgent:
             players_b = self._get_cached_or_fetch(team_b, "players", assess_players)
 
             # Step 6: Historical stats comparison (ESPN current + previous season)
-            historical_a = self._get_cached_or_fetch(team_a, "historical", get_historical_comparison)
-            historical_b = self._get_cached_or_fetch(team_b, "historical", get_historical_comparison)
+            historical_a = self._get_cached_or_fetch(
+                team_a, "historical", get_historical_comparison
+            )
+            historical_b = self._get_cached_or_fetch(
+                team_b, "historical", get_historical_comparison
+            )
 
             # Step 7: Predict matchup
             team_stats = {team_a: stats_a, team_b: stats_b}
@@ -151,13 +169,21 @@ class OrchestratorAgent:
             if historical_a and isinstance(historical_a, dict):
                 analytics.setdefault(team_a, {})
                 if isinstance(analytics[team_a], dict):
-                    analytics[team_a]["improvement_score"] = historical_a.get("improvement_score", 0.5)
-                    analytics[team_a]["historical_trends"] = historical_a.get("trends", {})
+                    analytics[team_a]["improvement_score"] = historical_a.get(
+                        "improvement_score", 0.5
+                    )
+                    analytics[team_a]["historical_trends"] = historical_a.get(
+                        "trends", {}
+                    )
             if historical_b and isinstance(historical_b, dict):
                 analytics.setdefault(team_b, {})
                 if isinstance(analytics[team_b], dict):
-                    analytics[team_b]["improvement_score"] = historical_b.get("improvement_score", 0.5)
-                    analytics[team_b]["historical_trends"] = historical_b.get("trends", {})
+                    analytics[team_b]["improvement_score"] = historical_b.get(
+                        "improvement_score", 0.5
+                    )
+                    analytics[team_b]["historical_trends"] = historical_b.get(
+                        "trends", {}
+                    )
 
             prediction = predict_matchup(
                 team_a=team_a,
@@ -184,15 +210,14 @@ class OrchestratorAgent:
         )
 
         flagged_matchups: list[dict] = review_result.get("flagged_matchups", [])
-        flagged_winners: set[str] = {
-            p.get("winner", "") for p in flagged_matchups
-        }
+        flagged_winners: set[str] = {p.get("winner", "") for p in flagged_matchups}
 
         # Re-run predict_matchup for flagged matchups with review feedback (Requirement 9.7)
         if flagged_matchups:
             logger.info(
                 "Re-evaluating %d flagged matchup(s) in %s after review.",
-                len(flagged_matchups), round_name,
+                len(flagged_matchups),
+                round_name,
             )
             for i, pred_dict in enumerate(predictions_dict):
                 winner = pred_dict.get("winner", "")
@@ -212,14 +237,42 @@ class OrchestratorAgent:
                 seed_b = pred_dict["team_b"]["seed"]
 
                 # Rebuild data dicts from cache
-                stats_a = self.invocation_state["team_cache"].get(team_a, {}).get("stats", {})
-                stats_b = self.invocation_state["team_cache"].get(team_b, {}).get("stats", {})
-                qual_a = self.invocation_state["team_cache"].get(team_a, {}).get("qualitative", {})
-                qual_b = self.invocation_state["team_cache"].get(team_b, {}).get("qualitative", {})
-                analytics_a = self.invocation_state["team_cache"].get(team_a, {}).get("analytics", {})
-                analytics_b = self.invocation_state["team_cache"].get(team_b, {}).get("analytics", {})
-                players_a = self.invocation_state["team_cache"].get(team_a, {}).get("players", {})
-                players_b = self.invocation_state["team_cache"].get(team_b, {}).get("players", {})
+                stats_a = (
+                    self.invocation_state["team_cache"].get(team_a, {}).get("stats", {})
+                )
+                stats_b = (
+                    self.invocation_state["team_cache"].get(team_b, {}).get("stats", {})
+                )
+                qual_a = (
+                    self.invocation_state["team_cache"]
+                    .get(team_a, {})
+                    .get("qualitative", {})
+                )
+                qual_b = (
+                    self.invocation_state["team_cache"]
+                    .get(team_b, {})
+                    .get("qualitative", {})
+                )
+                analytics_a = (
+                    self.invocation_state["team_cache"]
+                    .get(team_a, {})
+                    .get("analytics", {})
+                )
+                analytics_b = (
+                    self.invocation_state["team_cache"]
+                    .get(team_b, {})
+                    .get("analytics", {})
+                )
+                players_a = (
+                    self.invocation_state["team_cache"]
+                    .get(team_a, {})
+                    .get("players", {})
+                )
+                players_b = (
+                    self.invocation_state["team_cache"]
+                    .get(team_b, {})
+                    .get("players", {})
+                )
 
                 matchup_report = analyze_matchup(
                     team_a=team_a,
@@ -251,19 +304,41 @@ class OrchestratorAgent:
                 )
                 predictions_dict[i] = revised_prediction
 
-        # Convert dicts back to Prediction objects
+        # Convert dicts back to Prediction objects, preserving extra fields
+        # (e.g. predicted_total_score for Championship games)
         predictions: list[Prediction] = []
+        extra_fields: list[dict] = []
         for pred_dict in predictions_dict:
+            # Extract fields not in the Prediction dataclass
+            extras = {}
+            if "predicted_total_score" in pred_dict:
+                extras["predicted_total_score"] = pred_dict["predicted_total_score"]
+            extra_fields.append(extras)
+
+            # Restore region from original matchup data
+            original_matchup = next(
+                (m for m in matchups if m.team_a.name == pred_dict["team_a"]["name"]),
+                None,
+            )
+            if original_matchup:
+                pred_dict["team_a"]["region"] = original_matchup.team_a.region.value
+                pred_dict["team_b"]["region"] = original_matchup.team_b.region.value
+
             predictions.append(Prediction.from_dict(pred_dict))
 
-        # Store completed round in invocation_state
-        self.invocation_state["completed_rounds"][round_name] = [
-            p.to_dict() for p in predictions
-        ]
+        # Store completed round in invocation_state (with extra fields merged back)
+        completed = []
+        for pred, extras in zip(predictions, extra_fields):
+            d = pred.to_dict()
+            d.update(extras)
+            completed.append(d)
+        self.invocation_state["completed_rounds"][round_name] = completed
 
         return predictions
 
-    def advance_winners(self, round_name: str, predictions: list[Prediction]) -> list[Matchup]:
+    def advance_winners(
+        self, round_name: str, predictions: list[Prediction]
+    ) -> list[Matchup]:
         """Build next round matchups from current round winners.
 
         For most rounds, pairs winners sequentially: winner[0] vs winner[1], etc.
@@ -387,21 +462,21 @@ class OrchestratorAgent:
     ) -> BracketOutput:
         """Execute full bracket prediction workflow across all rounds.
 
-   
-     Processes rounds sequentially from start_round through Championship.
-        Supports resumption from a specific round via prior_results.
 
-        Args:
-            bracket: The tournament bracket with all 64 teams.
-            start_round: Round to start from (default "Round of 64").
-            prior_results: Prior round results dict for resumption (optional).
-            verbose: If True, display console summary after each round.
+        Processes rounds sequentially from start_round through Championship.
+           Supports resumption from a specific round via prior_results.
 
-        Returns:
-            Complete BracketOutput with champion, path, all round results,
-            upset alerts, and Cinderella watch list.
+           Args:
+               bracket: The tournament bracket with all 64 teams.
+               start_round: Round to start from (default "Round of 64").
+               prior_results: Prior round results dict for resumption (optional).
+               verbose: If True, display console summary after each round.
 
-        Requirements: 10.1, 10.2, 10.3, 10.4, 10.5, 1.5, 12.4
+           Returns:
+               Complete BracketOutput with champion, path, all round results,
+               upset alerts, and Cinderella watch list.
+
+           Requirements: 10.1, 10.2, 10.3, 10.4, 10.5, 1.5, 12.4
         """
         # Initialize invocation_state with bracket data
         self.invocation_state["bracket"] = bracket.to_dict()
@@ -434,7 +509,8 @@ class OrchestratorAgent:
                     preds = [Prediction.from_dict(p) for p in prior_results[rnd_name]]
                     upset_count = sum(1 for p in preds if p.upset_alert)
                     cinderella = [
-                        p.winner for p in preds
+                        p.winner
+                        for p in preds
                         if (p.winner == p.team_a.name and p.team_a.seed >= 11)
                         or (p.winner == p.team_b.name and p.team_b.seed >= 11)
                     ]
@@ -450,14 +526,17 @@ class OrchestratorAgent:
         # Process each round sequentially (Requirement 10.1)
         for round_name in rounds_to_process:
             self.invocation_state["current_round"] = round_name
-            logger.info("Processing %s (%d matchups)", round_name, len(current_matchups))
+            logger.info(
+                "Processing %s (%d matchups)", round_name, len(current_matchups)
+            )
 
             predictions = self.process_round(round_name, current_matchups)
 
             # Build RoundResult
             upset_count = sum(1 for p in predictions if p.upset_alert)
             cinderella_candidates = [
-                p.winner for p in predictions
+                p.winner
+                for p in predictions
                 if (p.winner == p.team_a.name and p.team_a.seed >= 11)
                 or (p.winner == p.team_b.name and p.team_b.seed >= 11)
             ]
@@ -488,7 +567,16 @@ class OrchestratorAgent:
                 current_matchups = self.advance_winners(round_name, predictions)
 
         # Build final BracketOutput (Requirement 10.5)
-        return self._build_bracket_output(all_round_results)
+        output = self._build_bracket_output(all_round_results)
+
+        # Attach championship score prediction if available
+        champ_round = self.invocation_state["completed_rounds"].get(
+            RoundName.CHAMPIONSHIP.value, []
+        )
+        if champ_round and "predicted_total_score" in champ_round[0]:
+            output.championship_score = champ_round[0]["predicted_total_score"]
+
+        return output
 
     def _get_cached_or_fetch(
         self,
@@ -546,7 +634,9 @@ class OrchestratorAgent:
         prev_predictions = [Prediction.from_dict(p) for p in prev_preds_raw]
         return self.advance_winners(prev_round_name, prev_predictions)
 
-    def _build_bracket_output(self, all_round_results: list[RoundResult]) -> BracketOutput:
+    def _build_bracket_output(
+        self, all_round_results: list[RoundResult]
+    ) -> BracketOutput:
         """Build the complete BracketOutput from all round results.
 
         Determines champion, champion path, upset alerts, and Cinderella watch.
@@ -608,14 +698,16 @@ class OrchestratorAgent:
                         if pred.winner == pred.team_a.name
                         else pred.team_a.seed
                     )
-                    upset_alerts.append({
-                        "round": round_result.round_name.value,
-                        "winner": pred.winner,
-                        "winner_seed": winner_seed,
-                        "loser": loser,
-                        "loser_seed": loser_seed,
-                        "confidence": pred.confidence,
-                    })
+                    upset_alerts.append(
+                        {
+                            "round": round_result.round_name.value,
+                            "winner": pred.winner,
+                            "winner_seed": winner_seed,
+                            "loser": loser,
+                            "loser_seed": loser_seed,
+                            "confidence": pred.confidence,
+                        }
+                    )
 
         # Cinderella watch: seeds >= 11 advancing past Round of 64 (Requirement 12.3)
         cinderella_watch: list[dict] = []
@@ -637,9 +729,9 @@ class OrchestratorAgent:
                         }
                     else:
                         # Update to furthest round reached
-                        cinderella_teams[pred.winner]["furthest_round"] = (
-                            round_result.round_name.value
-                        )
+                        cinderella_teams[pred.winner][
+                            "furthest_round"
+                        ] = round_result.round_name.value
 
         # Only include teams that advanced past Round of 64
         for team_name, info in cinderella_teams.items():

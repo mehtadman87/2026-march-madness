@@ -112,6 +112,18 @@ Bracket PDFs often use abbreviations. The system automatically normalizes them:
 
 The Claude vision prompt also requests full names, and a fuzzy matcher handles any remaining mismatches.
 
+## Final Four Region Pairing
+
+The system follows the official NCAA bracket convention for Final Four matchups:
+- East region winner vs South region winner
+- West region winner vs Midwest region winner
+
+This ensures correct semifinal pairings regardless of the order teams are processed internally.
+
+## Championship Score Prediction
+
+For the Championship game, the system predicts the total combined final score along with individual team scores. The prediction uses each team's season scoring average (PPG) with a 5% championship-game adjustment factor to account for elite defensive matchups and slower pace typical of title games.
+
 ## Running Tests
 
 ```bash
