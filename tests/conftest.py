@@ -55,6 +55,7 @@ _bootstrap_cbbpy()
 _ORCHESTRATOR_STUB_MODULES = [
     "src.agents.advanced_analytics",
     "src.agents.bracket_review",
+    "src.agents.historical_stats",
     "src.agents.pdf_parser",
     "src.agents.structured_data",
     "src.agents.team_research",

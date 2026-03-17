@@ -20,6 +20,7 @@ from strands import tool
 from src.models.enums import Region, RoundName
 from src.models.team import Bracket, BracketValidationError, Matchup, RegionBracket, Team
 from src.utils.pdf_extractor import extract_with_pdfplumber, extract_with_vision
+from src.utils.team_names import normalize_bracket_teams
 
 logger = logging.getLogger(__name__)
 
@@ -201,6 +202,9 @@ def parse_bracket(file_path: str) -> dict:
             "pdfplumber or Bedrock Claude vision. "
             "Please provide the bracket as a JSON file using the --bracket-json option."
         )
+
+    # Step 4: Normalize team names (abbreviations -> canonical full names)
+    extracted = normalize_bracket_teams(extracted)
 
     # Build Bracket object from extracted data
     try:

@@ -18,6 +18,7 @@ from strands import tool
 
 from src.agents.advanced_analytics import get_advanced_analytics
 from src.agents.bracket_review import review_round
+from src.agents.historical_stats import get_historical_comparison
 from src.agents.matchup_analyst import analyze_matchup
 from src.agents.pdf_parser import parse_bracket
 from src.agents.player_injury import assess_players
@@ -136,11 +137,27 @@ class OrchestratorAgent:
             players_a = self._get_cached_or_fetch(team_a, "players", assess_players)
             players_b = self._get_cached_or_fetch(team_b, "players", assess_players)
 
-            # Step 6: Predict matchup
+            # Step 6: Historical stats comparison (ESPN current + previous season)
+            historical_a = self._get_cached_or_fetch(team_a, "historical", get_historical_comparison)
+            historical_b = self._get_cached_or_fetch(team_b, "historical", get_historical_comparison)
+
+            # Step 7: Predict matchup
             team_stats = {team_a: stats_a, team_b: stats_b}
             qualitative = {team_a: qual_a, team_b: qual_b}
             analytics = {team_a: analytics_a, team_b: analytics_b}
             players = {team_a: players_a, team_b: players_b}
+
+            # Enrich analytics with historical improvement scores
+            if historical_a and isinstance(historical_a, dict):
+                analytics.setdefault(team_a, {})
+                if isinstance(analytics[team_a], dict):
+                    analytics[team_a]["improvement_score"] = historical_a.get("improvement_score", 0.5)
+                    analytics[team_a]["historical_trends"] = historical_a.get("trends", {})
+            if historical_b and isinstance(historical_b, dict):
+                analytics.setdefault(team_b, {})
+                if isinstance(analytics[team_b], dict):
+                    analytics[team_b]["improvement_score"] = historical_b.get("improvement_score", 0.5)
+                    analytics[team_b]["historical_trends"] = historical_b.get("trends", {})
 
             prediction = predict_matchup(
                 team_a=team_a,

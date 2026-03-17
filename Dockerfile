@@ -15,4 +15,6 @@ ENV CBBD_API_KEY=""
 # AgentCore Runtime requires /ping and /invocations on port 8080.
 EXPOSE 8080
 
-ENTRYPOINT ["python", "-m", "src.main"]
+# Start the HTTP server (not the CLI) for AgentCore Runtime.
+# CLI mode is still available via: docker run ... python -m src.main --bracket ...
+ENTRYPOINT ["python", "-m", "src.server"]

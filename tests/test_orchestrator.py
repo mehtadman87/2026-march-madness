@@ -18,6 +18,7 @@ from unittest.mock import MagicMock, patch
 # player_injury, prediction) — these need to be present before the import.
 for _mod in [
     "src.agents.bracket_review",
+    "src.agents.historical_stats",
     "src.agents.matchup_analyst",
     "src.agents.player_injury",
     "src.agents.prediction",

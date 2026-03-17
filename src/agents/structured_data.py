@@ -1,6 +1,7 @@
 """Structured Data Agent for March Madness Bracket Predictor.
 
 Retrieves quantitative team statistics from multiple APIs:
+- ESPN API (free, no auth, current season data)
 - NCAA API (ncaa-api.henrygd.me) via httpx
 - CBBpy (ESPN scraper)
 - CBBD (CollegeBasketballData.com)
@@ -19,11 +20,11 @@ from strands import tool
 
 from src.models.agent_outputs import TeamStats
 from src.utils.cache import TeamDataCache
+from src.utils.espn_client import get_team_stats as espn_get_team_stats
 
 
 def _current_season() -> int:
-    """Return the current NCAA season year. The season spans two calendar years;
-    March Madness in March 2026 is the 2025-26 season, referred to as 2026."""
+    """Return the current NCAA season year."""
     now = datetime.now()
     return now.year if now.month >= 8 else now.year
 from src.utils.cbbd_client import CBBD_HTTP_Client
@@ -91,11 +92,21 @@ def _fetch_cbbd(team_name: str) -> dict | None:
     return client.get_team_season_stats(team_name, _current_season())
 
 
+def _fetch_espn(team_name: str) -> dict | None:
+    """Fetch team stats from ESPN's public API (no auth required).
+
+    Returns a normalized dict or None on any error.
+    This is the most reliable source for current-season data.
+    """
+    return espn_get_team_stats(team_name, season=_current_season())
+
+
 def _build_team_stats(
     team_name: str,
     ncaa_data: dict | None,
     cbbpy_data: dict | None,
     cbbd_data: dict | None,
+    espn_data: dict | None = None,
 ) -> TeamStats:
     """Merge data from all available sources into a TeamStats object.
 
@@ -107,6 +118,8 @@ def _build_team_stats(
     missing_fields: list[str] = []
     data_sources: list[str] = []
 
+    if espn_data:
+        data_sources.append("espn")
     if ncaa_data:
         data_sources.append("ncaa_api")
     if cbbpy_data:
@@ -123,6 +136,7 @@ def _build_team_stats(
 
     # --- season_record ---
     season_record = _get(
+        (espn_data, "season_record"),
         (ncaa_data, "season_record"),
         (cbbd_data, "season_record"),
         (cbbpy_data, "season_record"),
@@ -142,6 +156,7 @@ def _build_team_stats(
 
     # --- scoring_offense ---
     scoring_offense = _get(
+        (espn_data, "scoring_offense"),
         (ncaa_data, "scoring_offense"),
         (cbbd_data, "points_per_game"),
         (cbbd_data, "scoring_offense"),
@@ -153,6 +168,7 @@ def _build_team_stats(
 
     # --- scoring_defense ---
     scoring_defense = _get(
+        (espn_data, "scoring_defense"),
         (ncaa_data, "scoring_defense"),
         (cbbd_data, "opponent_points_per_game"),
         (cbbd_data, "scoring_defense"),
@@ -184,6 +200,7 @@ def _build_team_stats(
 
     # --- free_throw_pct ---
     free_throw_pct = _get(
+        (espn_data, "free_throw_pct"),
         (ncaa_data, "free_throw_pct"),
         (cbbd_data, "free_throw_pct"),
         (cbbd_data, "ft_pct"),
@@ -195,6 +212,7 @@ def _build_team_stats(
 
     # --- three_point_pct ---
     three_point_pct = _get(
+        (espn_data, "three_point_pct"),
         (ncaa_data, "three_point_pct"),
         (cbbd_data, "three_point_pct"),
         (cbbd_data, "three_pt_pct"),
@@ -206,6 +224,7 @@ def _build_team_stats(
 
     # --- field_goal_pct ---
     field_goal_pct = _get(
+        (espn_data, "field_goal_pct"),
         (ncaa_data, "field_goal_pct"),
         (cbbd_data, "field_goal_pct"),
         (cbbd_data, "fg_pct"),
@@ -300,17 +319,20 @@ def get_team_data(team_name: str) -> dict:
 
     logger.info("Fetching structured data for team '%s'.", team_name)
 
-    # Requirement 3.2, 3.3 — NCAA API with rate limiting
+    # ESPN API — most reliable for current-season data (no auth required)
+    espn_data = _fetch_espn(team_name)
+
+    # NCAA API with rate limiting
     ncaa_data = _fetch_ncaa_api(team_name)
 
-    # Requirement 3.2 — CBBpy
+    # CBBpy
     cbbpy_data = _fetch_cbbpy(team_name)
 
-    # Requirement 3.2, 3.4 — CBBD with monthly quota tracking
+    # CBBD
     cbbd_data = _fetch_cbbd(team_name)
 
     # Requirement 3.1, 3.6 — build TeamStats from whatever succeeded
-    stats = _build_team_stats(team_name, ncaa_data, cbbpy_data, cbbd_data)
+    stats = _build_team_stats(team_name, ncaa_data, cbbpy_data, cbbd_data, espn_data)
 
     if stats.missing_fields:
         logger.warning(

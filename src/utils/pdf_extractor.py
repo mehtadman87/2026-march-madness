@@ -152,17 +152,21 @@ def _build_vision_prompt() -> str:
         "Extract all bracket data and return ONLY a valid JSON object with this exact structure:\n"
         "{\n"
         '  "teams": [\n'
-        '    {"name": "<team name>", "seed": <1-16>, "region": "<East|West|South|Midwest>"}\n'
+        '    {"name": "<full team name>", "seed": <1-16>, "region": "<East|West|South|Midwest>"}\n'
         "  ],\n"
         '  "matchups": [\n'
-        '    {"team_a": "<team name>", "team_b": "<team name>", "venue": "<location or empty string>"}\n'
+        '    {"team_a": "<full team name>", "team_b": "<full team name>", "venue": "<location or empty string>"}\n'
         "  ],\n"
         '  "season": <year as integer or null>\n'
         "}\n\n"
         "Rules:\n"
         "- Include all 64 teams with their correct seeds and regions.\n"
         "- List only first-round matchups (32 total).\n"
-        "- Use the exact team names as printed in the bracket.\n"
+        "- IMPORTANT: Use the FULL official team name, NOT abbreviations. "
+        "For example, use 'Michigan State' not 'MICHST', 'Iowa State' not 'Iowa St.', "
+        "'North Dakota State' not 'NDAKST', 'South Florida' not 'SFLA', "
+        "'North Carolina' not 'N. Carolina', 'Northern Iowa' not 'N. Iowa'. "
+        "If the bracket shows an abbreviation, expand it to the full school name.\n"
         "- Return ONLY the JSON object, no markdown fences, no explanation."
     )
 

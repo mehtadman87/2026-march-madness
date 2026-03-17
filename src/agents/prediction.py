@@ -114,8 +114,13 @@ def _score_matchup_factors(team_a: str, matchup: dict) -> float:
     return 0.5
 
 
-def _score_momentum(team_a: str, team_stats: dict) -> float:
-    """Score team_a momentum using scoring_offense as proxy."""
+def _score_momentum(team_a: str, team_stats: dict, analytics: dict | None = None) -> float:
+    """Score team_a momentum using scoring_offense and historical improvement.
+
+    If historical improvement_score is available (from ESPN year-over-year
+    comparison), it's blended with the scoring offense comparison for a
+    more robust momentum signal.
+    """
     a_data = team_stats.get(team_a, {})
     keys = [k for k in team_stats if k != team_a]
     b_data = team_stats.get(keys[0], {}) if keys else {}
@@ -124,10 +129,25 @@ def _score_momentum(team_a: str, team_stats: dict) -> float:
     off_b = b_data.get("scoring_offense", 0.0)
 
     if abs(off_a - off_b) < 1e-9 or (off_a < 1e-9 and off_b < 1e-9):
-        return 0.5
+        offense_score = 0.5
+    else:
+        total = off_a + off_b
+        offense_score = off_a / total if total > 0 else 0.5
 
-    total = off_a + off_b
-    return off_a / total if total > 0 else 0.5
+    # Blend with historical improvement score if available
+    if analytics:
+        imp_a = analytics.get(team_a, {}).get("improvement_score", 0.5) if isinstance(analytics.get(team_a), dict) else 0.5
+        team_b_name = keys[0] if keys else ""
+        imp_b = analytics.get(team_b_name, {}).get("improvement_score", 0.5) if isinstance(analytics.get(team_b_name), dict) else 0.5
+
+        if imp_a != 0.5 or imp_b != 0.5:
+            # Normalize improvement scores to a 0-1 scale for team_a
+            imp_total = imp_a + imp_b
+            improvement_score = imp_a / imp_total if imp_total > 0 else 0.5
+            # Blend: 60% offense comparison, 40% improvement trend
+            return 0.6 * offense_score + 0.4 * improvement_score
+
+    return offense_score
 
 
 def _score_seed_history(seed_a: int, seed_b: int) -> float:
@@ -280,7 +300,7 @@ def predict_matchup(
         scores["matchup_factors"] = _score_matchup_factors(team_a, matchup)
 
     if "momentum_form" in available_categories:
-        scores["momentum_form"] = _score_momentum(team_a, team_stats)
+        scores["momentum_form"] = _score_momentum(team_a, team_stats, analytics)
 
     # seed_history is always available
     scores["seed_history"] = _score_seed_history(seed_a, seed_b)
