@@ -1,0 +1,10 @@
+{
+  "1_vs_16": {"higher_seed_wins": 0.993, "sample_size": 152},
+  "2_vs_15": {"higher_seed_wins": 0.938, "sample_size": 152},
+  "3_vs_14": {"higher_seed_wins": 0.849, "sample_size": 152},
+  "4_vs_13": {"higher_seed_wins": 0.789, "sample_size": 152},
+  "5_vs_12": {"higher_seed_wins": 0.645, "sample_size": 152},
+  "6_vs_11": {"higher_seed_wins": 0.625, "sample_size": 152},
+  "7_vs_10": {"higher_seed_wins": 0.605, "sample_size": 152},
+  "8_vs_9":  {"higher_seed_wins": 0.513, "sample_size": 152}
+}

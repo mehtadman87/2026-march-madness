@@ -1,0 +1,119 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  Bedrock AgentCore Runtime stack for the March Madness Bracket Predictor.
+  Trust policy and permissions sourced from:
+  https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/runtime-permissions.html
+
+Parameters:
+  ImageUri:
+    Type: String
+    Description: Full ECR image URI (e.g. 123456789.dkr.ecr.us-east-1.amazonaws.com/bracket-predictor:latest)
+  LinkupApiKeyArn:
+    Type: String
+    Description: ARN of the Secrets Manager secret containing LINKUP_API_KEY
+  CbbdApiKeyArn:
+    Type: String
+    Description: ARN of the Secrets Manager secret containing CBBD_API_KEY
+
+Resources:
+  AgentCoreExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      # Trust policy: bedrock-agentcore.amazonaws.com with source account/ARN conditions
+      # per https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/runtime-permissions.html
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: AssumeRolePolicy
+            Effect: Allow
+            Principal:
+              Service: bedrock-agentcore.amazonaws.com
+            Action: sts:AssumeRole
+            Condition:
+              StringEquals:
+                aws:SourceAccount: !Ref AWS::AccountId
+              ArnLike:
+                aws:SourceArn: !Sub "arn:aws:bedrock-agentcore:${AWS::Region}:${AWS::AccountId}:*"
+      Policies:
+        - PolicyName: AgentCoreRuntimePolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              # ECR access to pull the container image
+              - Sid: ECRImageAccess
+                Effect: Allow
+                Action:
+                  - ecr:BatchGetImage
+                  - ecr:GetDownloadUrlForLayer
+                Resource: !Sub "arn:aws:ecr:${AWS::Region}:${AWS::AccountId}:repository/*"
+              - Sid: ECRTokenAccess
+                Effect: Allow
+                Action: ecr:GetAuthorizationToken
+                Resource: "*"
+              # CloudWatch Logs for runtime output
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:DescribeLogStreams
+                Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/bedrock-agentcore/runtimes/*"
+              - Effect: Allow
+                Action: logs:DescribeLogGroups
+                Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:*"
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/bedrock-agentcore/runtimes/*:log-stream:*"
+              # X-Ray tracing
+              - Effect: Allow
+                Action:
+                  - xray:PutTraceSegments
+                  - xray:PutTelemetryRecords
+                  - xray:GetSamplingRules
+                  - xray:GetSamplingTargets
+                Resource: "*"
+              # CloudWatch metrics (namespace-scoped)
+              - Effect: Allow
+                Action: cloudwatch:PutMetricData
+                Resource: "*"
+                Condition:
+                  StringEquals:
+                    cloudwatch:namespace: bedrock-agentcore
+              # Bedrock model invocation
+              - Sid: BedrockModelInvocation
+                Effect: Allow
+                Action:
+                  - bedrock:InvokeModel
+                  - bedrock:InvokeModelWithResponseStream
+                Resource:
+                  - arn:aws:bedrock:*::foundation-model/*
+                  - !Sub "arn:aws:bedrock:${AWS::Region}:${AWS::AccountId}:*"
+              # Secrets Manager: resolve API keys at container startup
+              - Sid: SecretsAccess
+                Effect: Allow
+                Action: secretsmanager:GetSecretValue
+                Resource:
+                  - !Ref LinkupApiKeyArn
+                  - !Ref CbbdApiKeyArn
+
+  BracketPredictorRuntime:
+    Type: AWS::BedrockAgentCore::Runtime
+    Properties:
+      AgentRuntimeName: MarchMadnessBracketPredictor
+      RoleArn: !GetAtt AgentCoreExecutionRole.Arn
+      NetworkConfiguration:
+        NetworkMode: PUBLIC
+      AgentRuntimeArtifact:
+        ContainerConfiguration:
+          ContainerUri: !Ref ImageUri
+      # Pass secret ARNs as env vars; container resolves them via boto3 at startup.
+      EnvironmentVariables:
+        LINKUP_API_KEY_SECRET_ARN: !Ref LinkupApiKeyArn
+        CBBD_API_KEY_SECRET_ARN: !Ref CbbdApiKeyArn
+        AWS_DEFAULT_REGION: !Ref AWS::Region
+
+Outputs:
+  RuntimeArn:
+    Value: !GetAtt BracketPredictorRuntime.AgentRuntimeArn
+  ExecutionRoleArn:
+    Value: !GetAtt AgentCoreExecutionRole.Arn
